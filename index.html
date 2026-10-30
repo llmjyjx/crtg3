@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人力资源智能化管理系统 - 汇报</title>
+<style>
+    :root {
+        --primary-blue: #1A56DB;
+        --light-blue: #E1EFFE;
+        --neon-blue: #3B82F6;
+        --dark-blue: #0F2C59;
+        --white: #FFFFFF;
+        --text-dark: #1E293B;
+        --text-gray: #64748B;
+        --glass-bg: rgba(255, 255, 255, 0.9);
+        --glass-border: rgba(255, 255, 255, 0.6);
+        --danger-red: #ef4444;
+        --pale: #f3f8fc;
+        --line: #dce7f1;
+        --cyan: #27a7b8;
+        --gold: #d4a64a;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+    
+    body, html { 
+        width: 100%; height: 100%; overflow: hidden; 
+        background-color: #0f172a;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    /* ================= 核心左右分栏布局 ================= */
+    .main-container {
+        display: flex;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    /* 左侧 PPT 展示区 */
+    .ppt-area {
+        width: 75%;
+        position: relative;
+        background-color: #f0f4f8;
+        background-image: 
+            linear-gradient(rgba(26, 86, 219, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(26, 86, 219, 0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    .ppt-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    /* 右侧 逐字稿提词区 (25% 宽度) */
+    .script-area {
+        width: 25%;
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 3vh 2vw;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -10px 0 30px rgba(0,0,0,0.2);
+        z-index: 20;
+        overflow-y: auto;
+    }
+    .script-area::-webkit-scrollbar { width: 6px; }
+    .script-area::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    
+    .script-content { font-size: 1vw; line-height: 1.8; color: #cbd5e1; flex: 1; }
+    .script-content p { margin-bottom: 1.5vh; }
+    .script-content strong { color: #fff; font-weight: bold; display: block; margin-bottom: 0.5vh; font-size: 1.1vw; }
+    .script-content .highlight { color: #fbbf24; }
+
+    /* ================= 幻灯片基础 ================= */
+    .slide {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        padding: 4% 6%;
+        background: linear-gradient(120deg, #fff 0%, #fbfdff 58%, #f2f8fd 100%);
+        opacity: 0; visibility: hidden;
+        transform: translateY(20px) scale(0.98);
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
+    }
+    
+    .slide.active {
+        opacity: 1; visibility: visible;
+        transform: translateY(0) scale(1);
+        pointer-events: auto; z-index: 10;
+    }
+
+    /* 动画 */
+    .animate-item { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .slide.active .animate-item { opacity: 1; transform: translateY(0); }
+    .step-1 { transition-delay: 0.1s; } .step-2 { transition-delay: 0.2s; } .step-3 { transition-delay: 0.3s; }
+    .step-4 { transition-delay: 0.4s; } .step-5 { transition-delay: 0.5s; }
+
+    /* 标题区 */
+    .title-row { width: 100%; display: flex; align-items: center; gap: 2vw; margin-bottom: 3vh; flex-shrink: 0; }
+    h1 { font-size: 4.5vw; color: var(--white); margin-bottom: 2vh; text-align: center; text-shadow: 0 0 3vw rgba(59, 130, 246, 0.8); letter-spacing: 0.5vw; font-weight: 800; }
+    h2 { font-size: 2.5vw; color: var(--dark-blue); position: relative; padding-left: 1.5vw; white-space: nowrap; font-weight: 800; }
+    h2::before { content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 0.6vw; background: linear-gradient(180deg, var(--neon-blue), var(--primary-blue)); border-radius: 0.4vw; box-shadow: 0 0 1vw var(--neon-blue); }
+    
+    /* 视角标签 */
+    .top-view-badge {
+        background: linear-gradient(90deg, var(--dark-blue), var(--primary-blue)); color: white;
+        padding: 1vw 2.5vw; border-radius: 4vw; display: flex; align-items: center; gap: 1vw;
+        font-size: 1.4vw; font-weight: bold; box-shadow: 0 0.5vw 2vw rgba(26,86,219,0.3); flex-shrink: 0;
+    }
+    .top-view-badge .icon { font-size: 1.8vw; }
+
+    /* 内容框 */
+    .content-box {
+        width: 100%; flex: 1; background: var(--glass-bg); border-radius: 2vw; padding: 3vw;
+        box-shadow: 0 2vw 4vw -1vw rgba(0, 0, 0, 0.08); display: flex; flex-direction: column; justify-content: center;
+        line-height: 1.6; font-size: 1.4vw; color: var(--text-dark); border: 1px solid var(--glass-border);
+    }
+
+    /* 封面 */
+    .slide.cover { background: radial-gradient(circle at center, #1e3a8a 0%, #0f172a 100%); }
+    .halo { position: absolute; width: 40vw; height: 40vw; border-radius: 50%; background: radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%); animation: pulseHalo 4s ease-in-out infinite; }
+    @keyframes pulseHalo { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 0.8; } }
+
+    /* ================= 饼图样式 ================= */
+    .piearea { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 4vw; height: 80%; }
+    .pie { 
+        width: 22vw; aspect-ratio: 1; border-radius: 50%; margin: auto; 
+        background: conic-gradient(var(--primary-blue) 0 38%, var(--cyan) 38% 84.5%, var(--gold) 84.5%); 
+        position: relative; box-shadow: 0 1.5vw 3vw rgba(26,86,219,0.2); 
+    }
+    .pie::after { 
+        content: "348"; display: grid; place-items: center; position: absolute; inset: 22%; 
+        border-radius: 50%; background: white; color: var(--dark-blue); 
+        font-size: 3.5vw; font-weight: 800; box-shadow: 0 0 0 1px var(--line); 
+    }
+    .legend { display: grid; gap: 2.5vh; }
+    .legend div { display: grid; grid-template-columns: 2vw 1fr auto; align-items: center; gap: 1.5vw; font-size: 1.4vw; font-weight: bold; color: var(--text-dark); }
+    .dot { width: 1.5vw; height: 1.5vw; border-radius: 0.3vw; }
+    .legend b { font-size: 1.6vw; color: var(--primary-blue); }
+
+    /* 截图区域 */
+    .screenshot-box { width: 100%; height: 100%; background: #e2e8f0; border-radius: 1vw; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    .screenshot-box img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* ================= 4-8页：等高竖条布局 ================= */
+    .module-layout-drawing { display: flex; width: 100%; height: 75%; gap: 1.5vw; margin-top: 1vh; }
+    .mod-left-box {
+        flex: 0 0 15%; background: linear-gradient(180deg, var(--dark-blue), var(--primary-blue));
+        border-radius: 1.5vw; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: white; box-shadow: 0 1vw 2vw rgba(26,86,219,0.3); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .mod-left-box .icon { font-size: 3.5vw; margin-bottom: 1.5vh; }
+    .mod-left-box .name { font-size: 1.3vw; font-weight: bold; letter-spacing: 0.3vw; writing-mode: vertical-rl; text-orientation: upright; }
+    
+    .mod-right-flex { flex: 1; display: flex; gap: 1vw; align-items: stretch; }
+    .mod-vertical-bar {
+        flex: 1; background: var(--white); border: 2px solid var(--light-blue); border-radius: 1vw;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        box-shadow: 0 0.5vw 1vw rgba(0,0,0,0.04); transition: all 0.3s; cursor: default; padding: 1.5vw 0; height: 100%;
+    }
+    .mod-vertical-bar:hover { border-color: var(--primary-blue); background: #f8fafc; }
+    .mod-vertical-bar span { font-size: 1.1vw; font-weight: bold; color: var(--dark-blue); writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 0.3vw; line-height: 1.4; }
+
+    /* ================= 卡片布局 ================= */
+    .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vw; margin-top: 2vh; width: 100%; }
+    .card { background: linear-gradient(135deg, var(--primary-blue) 0%, #2563EB 100%); color: var(--white); padding: 4vw 2vw; border-radius: 1.5vw; text-align: center; font-size: 1.5vw; font-weight: bold; box-shadow: 0 1vw 2vw rgba(37, 99, 235, 0.2); }
+
+    .top-banner-new { width: 100%; height: 8vh; background: var(--white); border: 2px solid var(--primary-blue); border-radius: 1vw; display: flex; align-items: center; justify-content: center; font-size: 1.8vw; font-weight: bold; color: var(--primary-blue); letter-spacing: 0.2vw; margin-bottom: 2vh; }
+    .bottom-bars-container { display: flex; gap: 2vw; flex: 1; width: 100%; }
+    .data-card { flex: 1; background: var(--white); border: 2px solid var(--primary-blue); border-radius: 1vw; display: flex; align-items: center; justify-content: center; font-size: 1.5vw; font-weight: bold; color: var(--dark-blue); letter-spacing: 0.4vw; writing-mode: vertical-rl; text-orientation: upright; box-shadow: 0 0.5vw 1vw rgba(26,86,219,0.08); transition: all 0.3s; }
+    .data-card:hover { background: var(--primary-blue); color: var(--white); transform: translateY(-1vw); }
+
+    .process-cards-container { display: flex; flex-direction: column; gap: 2vh; flex: 1; justify-content: center; }
+    .process-card { background: var(--white); border-radius: 1vw; border: 2px solid var(--light-blue); padding: 2.5vw; display: flex; align-items: center; box-shadow: 0 0.5vw 1vw rgba(0,0,0,0.04); }
+    .process-card h3 { color: var(--primary-blue); font-size: 1.4vw; width: 16vw; flex-shrink: 0; border-right: 2px dashed var(--light-blue); padding-right: 1.5vw; }
+    .process-step-list { display: flex; flex: 1; gap: 1.5vw; padding-left: 2vw; justify-content: space-between; }
+    .process-step { background: var(--pale); padding: 1.5vw; border-radius: 0.8vw; font-size: 1.1vw; text-align: center; border: 1px solid var(--line); position: relative; flex: 1; white-space: nowrap; font-weight: bold; }
+    .process-step:not(:last-child)::after { content: '➔'; position: absolute; right: -1.5vw; top: 50%; transform: translateY(-50%); color: var(--primary-blue); font-size: 1.5vw; }
+
+    .flow-container { display: flex; flex-direction: column; gap: 2.5vh; width: 100%; max-width: 80vw; margin: 0 auto; }
+    .flow-box { display: flex; align-items: center; justify-content: center; gap: 2vw; background: var(--white); padding: 2.5vw; border-radius: 1vw; border-left: 8px solid var(--primary-blue); font-size: 1.5vw; font-weight: bold; box-shadow: 0 0.5vw 1vw rgba(0,0,0,0.06); }
+    .flow-arrow { color: var(--primary-blue); font-size: 2vw; }
+    .flow-box.danger { border-left-color: var(--danger-red); background: #fef2f2; color: var(--danger-red); }
+
+    /* ================= 完美修复三角闭环 ================= */
+    .triangle-wrapper {
+        width: 100%;
+        height: 60vh;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 2vh;
+    }
+
+    .svg-container {
+        position: absolute;
+        width: 50vw; /* 调整宽度使比例更协调 */
+        height: 50vh;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+    }
+
+    /* 绘制静态虚线底纹 */
+    .bg-polygon {
+        fill: none; stroke: #E1EFFE; stroke-width: 6; stroke-dasharray: 12 12;
+    }
+    /* 绘制动态流光 */
+    .flow-polygon {
+        fill: none; stroke: var(--neon-blue); stroke-width: 4; stroke-linecap: round;
+        stroke-dasharray: 80 1000;
+        animation: dashMove 4s linear infinite;
+        filter: drop-shadow(0 0 8px var(--neon-blue));
+    }
+    @keyframes dashMove { 0% { stroke-dashoffset: 1080; } 100% { stroke-dashoffset: 0; } }
+
+    /* 使用绝对定位将三个节点精准钉在三角形的顶点上 */
+    .tri-node { 
+        position: absolute; width: 12vw; height: 12vw; background: var(--white); border-radius: 50%; 
+        display: flex; align-items: center; justify-content: center; font-size: 1.8vw; font-weight: bold; color: var(--dark-blue); 
+        box-shadow: 0 1vw 3vw rgba(26, 86, 219, 0.15); z-index: 10; border: 6px solid var(--white); outline: 3px solid var(--light-blue);
+        transition: transform 0.3s;
+    }
+    .tri-node:hover { transform: scale(1.05) !important; }
+
+    /* 顶点（系统）：顶部居中 */
+    .node-top { top: 2vh; left: 50%; transform: translateX(-50%); }
+    .node-top:hover { transform: translateX(-50%) scale(1.05); }
+    
+    /* 左下角（员工） */
+    .node-left { bottom: 2vh; left: 15%; }
+    
+    /* 右下角（HR） */
+    .node-right { bottom: 2vh; right: 15%; }
+
+    /* 导航 */
+    .nav-controls { position: fixed; bottom: 3vh; right: calc(25% + 2vw); z-index: 100; display: flex; gap: 1vw; }
+    .nav-btn { background: rgba(255, 255, 255, 0.9); color: var(--primary-blue); border: 1px solid var(--light-blue); width: 4vw; height: 4vw; border-radius: 50%; cursor: pointer; font-size: 1.5vw; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: 0.3s; }
+    .nav-btn:hover { background: var(--primary-blue); color: var(--white); transform: scale(1.1); }
+    .page-indicator { position: fixed; bottom: 4.5vh; left: 2vw; font-size: 1.2vw; color: var(--text-dark); z-index: 100; font-weight: bold; background: rgba(255,255,255,0.8); padding: 0.5vw 1vw; border-radius: 1vw; }
+
+</style>
+</head>
+<body>
+
+<div class="main-container">
+    <!-- ================= 左侧 PPT ================= -->
+    <div class="ppt-area" id="ppt-area">
+        <div class="ppt-container" id="ppt">
+            <!-- 1. 开场 -->
+            <div class="slide cover active">
+                <div class="halo"></div>
+                <h1 class="animate-item step-1">人力资源智能化管理系统</h1>
+                <p class="animate-item step-2" style="font-size: 2vw; color: #93c5fd; letter-spacing: 0.5vw;">项目汇报</p>
+            </div>
+
+            <!-- 2. 建设进度 (饼图) -->
+            <div class="slide">
+                <h2 class="animate-item step-1">项目建设进度</h2>
+                <div class="content-box animate-item step-2" style="padding: 2vw 4vw;">
+                    <p style="text-align: center; font-size: 1.4vw; margin-bottom: 1vh; color: var(--text-gray);">自 2026年5月31日启用以来，累计形成需求并全部完成</p>
+                    <div class="piearea">
+                        <div class="pie animate-item step-3"></div>
+                        <div class="legend animate-item step-4">
+                            <div><i class="dot" style="background:var(--primary-blue);"></i><span>功能优化</span><b>132 项</b></div>
+                            <div><i class="dot" style="background:var(--cyan);"></i><span>Bug类问题</span><b>162 项</b></div>
+                            <div><i class="dot" style="background:var(--gold);"></i><span>新增需求</span><b>60 项</b></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3-1. 老系统界面 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">新老系统对比：老系统界面</h2>
+                <div class="content-box animate-item step-2" style="padding: 1vw;">
+                    <div class="screenshot-box"><img src="old.png" alt="老系统截图" onerror="this.style.display='none';"></div>
+                </div>
+            </div>
+
+            <!-- 3-2. 新系统界面 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">新老系统对比：新系统界面</h2>
+                <div class="content-box animate-item step-2" style="padding: 1vw; background: #e8f3fc;">
+                    <div class="screenshot-box" style="border-color: var(--primary-blue);"><img src="new.png" alt="新系统截图" onerror="this.style.display='none';"></div>
+                </div>
+            </div>
+
+            <!-- 4. 员工管理 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">员工管理</h2>
+                <div class="module-layout-drawing animate-item step-2">
+                    <div class="mod-left-box">
+                        <div class="icon">👥</div>
+                        <div class="name">员工管理</div>
+                    </div>
+                    <div class="mod-right-flex">
+                        <div class="mod-vertical-bar"><span>人员基本信息</span></div>
+                        <div class="mod-vertical-bar"><span>辅助性人员管理</span></div>
+                        <div class="mod-vertical-bar"><span>富余人员管理</span></div>
+                        <div class="mod-vertical-bar"><span>奖惩处罚管理</span></div>
+                        <div class="mod-vertical-bar"><span>基本信息审核</span></div>
+                        <div class="mod-vertical-bar"><span>项目用工申请</span></div>
+                        <div class="mod-vertical-bar"><span>人事变动</span></div>
+                        <div class="mod-vertical-bar"><span>合同管理</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 薪酬管理 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">薪酬管理</h2>
+                <div class="module-layout-drawing animate-item step-2">
+                    <div class="mod-left-box" style="background: linear-gradient(180deg, #0f766e, #14b8a6);">
+                        <div class="icon">💰</div>
+                        <div class="name">薪酬管理</div>
+                    </div>
+                    <div class="mod-right-flex">
+                        <div class="mod-vertical-bar"><span>工资名册</span></div>
+                        <div class="mod-vertical-bar"><span>发放预警</span></div>
+                        <div class="mod-vertical-bar"><span>工资发放</span></div>
+                        <div class="mod-vertical-bar"><span>工资支付书</span></div>
+                        <div class="mod-vertical-bar"><span>拖欠统计</span></div>
+                        <div class="mod-vertical-bar"><span>休假台账</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. 培训与证书管理 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">培训与证书管理</h2>
+                <div class="module-layout-drawing animate-item step-2">
+                    <div class="mod-left-box" style="background: linear-gradient(180deg, #b45309, #f59e0b);">
+                        <div class="icon">🎓</div>
+                        <div class="name">培训与证书</div>
+                    </div>
+                    <div class="mod-right-flex">
+                        <div class="mod-vertical-bar"><span>培训计划管理</span></div>
+                        <div class="mod-vertical-bar"><span>自培管理</span></div>
+                        <div class="mod-vertical-bar"><span>委培管理</span></div>
+                        <div class="mod-vertical-bar"><span>职工教育经费</span></div>
+                        <div class="mod-vertical-bar"><span>特种作业证书</span></div>
+                        <div class="mod-vertical-bar"><span>注册岗位证书</span></div>
+                        <div class="mod-vertical-bar"><span>特种证书审核</span></div>
+                        <div class="mod-vertical-bar"><span>退出证书台账</span></div>
+                        <div class="mod-vertical-bar" style="background: #fef3c7; border-color: #fde68a;"><span style="color: #b45309;">证书预警</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. 文档中心 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">文档中心</h2>
+                <div class="module-layout-drawing animate-item step-2">
+                    <div class="mod-left-box" style="background: linear-gradient(180deg, #86198f, #d946ef);">
+                        <div class="icon">📁</div>
+                        <div class="name">文档中心</div>
+                    </div>
+                    <div class="mod-right-flex">
+                        <div class="mod-vertical-bar" style="background: #fce7f3; border-color: #fbcfe8;"><span style="color: #86198f;">文档管理</span></div>
+                        <div class="mod-vertical-bar" style="background: #fce7f3; border-color: #fbcfe8;"><span style="color: #86198f;">人事变动通知</span></div>
+                        <div class="mod-vertical-bar" style="background: #fce7f3; border-color: #fbcfe8;"><span style="color: #86198f;">发文归档</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. 系统设置 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">系统设置</h2>
+                <div class="module-layout-drawing animate-item step-2">
+                    <div class="mod-left-box" style="background: linear-gradient(180deg, #334155, #64748B);">
+                        <div class="icon">⚙️</div>
+                        <div class="name">系统设置</div>
+                    </div>
+                    <div class="mod-right-flex">
+                        <div class="mod-vertical-bar" style="background: #e2e8f0; border-color: #cbd5e1;"><span style="color: #475569;">流程配置</span></div>
+                        <div class="mod-vertical-bar" style="background: #e2e8f0; border-color: #cbd5e1;"><span style="color: #475569;">角色管理</span></div>
+                        <div class="mod-vertical-bar" style="background: #e2e8f0; border-color: #cbd5e1;"><span style="color: #475569;">岗位管理</span></div>
+                        <div class="mod-vertical-bar" style="background: #e2e8f0; border-color: #cbd5e1;"><span style="color: #475569;">用户管理</span></div>
+                        <div class="mod-vertical-bar" style="background: #e2e8f0; border-color: #cbd5e1;"><span style="color: #475569;">预警规则</span></div>
+                        <div class="mod-vertical-bar" style="background: #e2e8f0; border-color: #cbd5e1;"><span style="color: #475569;">日志管理</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 9. 三个视角 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">三个视角看系统</h2>
+                <div class="content-box animate-item step-2" style="text-align: center; height: 70%;">
+                    <p style="margin-bottom: 4vh; font-size: 1.4vw;">同一项人事业务，在不同角色眼中有着不同的意义。</p>
+                    <div class="card-grid">
+                        <div class="card animate-item step-2" style="padding: 4vw 1vw; background: #fff; color: var(--dark-blue); border: 2px solid var(--primary-blue);">
+                            <div style="font-size: 2.5vw; margin-bottom: 1vh;">👤</div>员工视角
+                        </div>
+                        <div class="card animate-item step-3" style="padding: 4vw 1vw; background: #fff; color: var(--dark-blue); border: 2px solid var(--primary-blue);">
+                            <div style="font-size: 2.5vw; margin-bottom: 1vh;">💼</div>HR视角
+                        </div>
+                        <div class="card animate-item step-4" style="padding: 4vw 1vw; background: #fff; color: var(--dark-blue); border: 2px solid var(--primary-blue);">
+                            <div style="font-size: 2.5vw; margin-bottom: 1vh;">⚙️</div>系统视角
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 10. 员工视角：入职建档 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">👤</span> 员工视角</div>
+                    <h2 style="margin-bottom: 0;">入职建档</h2>
+                </div>
+                <div class="content-box animate-item step-2" style="padding: 2vw;">
+                    <div class="top-banner-new">入职基础信息</div>
+                    <div class="bottom-bars-container">
+                        <div class="data-card animate-item step-3">人员信息</div>
+                        <div class="data-card animate-item step-4">家庭信息</div>
+                        <div class="data-card animate-item step-4">学历信息</div>
+                        <div class="data-card animate-item step-5">劳动合同</div>
+                        <div class="data-card animate-item step-5">档案附件</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 11. 员工视角：在岗经历 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">👤</span> 员工视角</div>
+                    <h2 style="margin-bottom: 0;">在岗经历积累</h2>
+                </div>
+                <div class="content-box animate-item step-2" style="padding: 2vw;">
+                    <div class="top-banner-new">在岗经历信息</div>
+                    <div class="bottom-bars-container">
+                        <div class="data-card animate-item step-3">奖惩信息</div>
+                        <div class="data-card animate-item step-4">履历信息</div>
+                        <div class="data-card animate-item step-4">培训信息</div>
+                        <div class="data-card animate-item step-5">证书信息</div>
+                        <div class="data-card animate-item step-5">职称信息</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 12. 岗位调动：文档中心 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">👤</span> 员工视角</div>
+                    <h2 style="margin-bottom: 0;">岗位调动数据联动</h2>
+                </div>
+                <div class="content-box animate-item step-2" style="align-items: center; text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 2vw; margin-bottom: 4vh; width: 100%;">
+                        <div style="background: #f1f5f9; padding: 2vw; border-radius: 0.8vw; font-weight: bold; font-size: 1.4vw;">中铁隧道集团三处有限公司</div>
+                        <div style="font-size: 2.5vw; color: var(--primary-blue); font-weight: bold;">➔</div>
+                        <div style="background: var(--primary-blue); color: white; padding: 2vw; border-radius: 0.8vw; font-weight: bold; font-size: 1.4vw;">东莞地铁2334标项目部</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                        <div style="font-size: 3vw; margin-bottom: 1.5vh;">📁</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 1.5vh; font-size: 1.5vw;">文档中心</h3>
+                        <div class="flow-box" style="width: 70%; justify-content: center; font-size: 1.2vw;">显示相关文件记录（表示公司已经发公文）</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 13. 岗位调动：履历信息 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">👤</span> 员工视角</div>
+                    <h2 style="margin-bottom: 0;">岗位调动数据联动</h2>
+                </div>
+                <div class="content-box animate-item step-2" style="align-items: center; text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 2vw; margin-bottom: 4vh; width: 100%;">
+                        <div style="background: #f1f5f9; padding: 2vw; border-radius: 0.8vw; font-weight: bold; font-size: 1.4vw;">中铁隧道集团三处有限公司</div>
+                        <div style="font-size: 2.5vw; color: var(--primary-blue); font-weight: bold;">➔</div>
+                        <div style="background: var(--primary-blue); color: white; padding: 2vw; border-radius: 0.8vw; font-weight: bold; font-size: 1.4vw;">东莞地铁2334标项目部</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                        <div style="font-size: 3vw; margin-bottom: 1.5vh;">📝</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 1.5vh; font-size: 1.5vw;">履历信息</h3>
+                        <div class="flow-box" style="width: 70%; justify-content: center; font-size: 1.2vw;">系统自动更新记录这段经历</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 14. 岗位调动：干审表 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">👤</span> 员工视角</div>
+                    <h2 style="margin-bottom: 0;">岗位调动数据联动</h2>
+                </div>
+                <div class="content-box animate-item step-2" style="align-items: center; text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 2vw; margin-bottom: 4vh; width: 100%;">
+                        <div style="background: #f1f5f9; padding: 2vw; border-radius: 0.8vw; font-weight: bold; font-size: 1.4vw;">中铁隧道集团三处有限公司</div>
+                        <div style="font-size: 2.5vw; color: var(--primary-blue); font-weight: bold;">➔</div>
+                        <div style="background: var(--primary-blue); color: white; padding: 2vw; border-radius: 0.8vw; font-weight: bold; font-size: 1.4vw;">东莞地铁2334标项目部</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                        <div style="font-size: 3vw; margin-bottom: 1.5vh;">📊</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 1.5vh; font-size: 1.5vw;">干审表</h3>
+                        <div class="flow-box" style="width: 70%; justify-content: center; font-size: 1.2vw; background: var(--primary-blue); color: white;">数据已自动同步到干审表</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 15. HR视角：一级审核 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">💼</span> HR视角</div>
+                    <h2 style="margin-bottom: 0;">数据如何形成（一级审核）</h2>
+                </div>
+                <div class="content-box animate-item step-2">
+                    <div class="flow-container">
+                        <div class="flow-box animate-item step-3"><span>提交数据</span> <span class="flow-arrow">➔</span> <span>审核通过</span> <span class="flow-arrow">➔</span> <span style="color: var(--primary-blue); font-weight: bold;">数据归档</span></div>
+                    </div>
+                    <p style="text-align: center; margin-top: 5vh; color: var(--text-gray); font-size: 1.3vw;">简单直接的一级审批流，适用于常规业务。</p>
+                </div>
+            </div>
+
+            <!-- 16. HR视角：多级审核 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">💼</span> HR视角</div>
+                    <h2 style="margin-bottom: 0;">数据如何形成（多级审核）</h2>
+                </div>
+                <div class="content-box animate-item step-2">
+                    <div class="flow-container">
+                        <div class="flow-box animate-item step-3"><span>提交数据</span> <span class="flow-arrow">➔</span> <span>一级审核通过</span> <span class="flow-arrow">➔</span> <span>二级审核通过</span> <span class="flow-arrow">➔</span> <span style="color: var(--primary-blue); font-weight: bold;">数据归档</span></div>
+                    </div>
+                    <p style="text-align: center; margin-top: 5vh; color: var(--text-gray); font-size: 1.3vw;">针对复杂业务，系统支持多级审核，层层把关。</p>
+                </div>
+            </div>
+
+            <!-- 17. HR视角：驳回后再次审核 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">💼</span> HR视角</div>
+                    <h2 style="margin-bottom: 0;">数据如何形成（驳回重审）</h2>
+                </div>
+                <div class="content-box animate-item step-2">
+                    <div class="flow-container">
+                        <div class="flow-box animate-item step-3"><span>提交数据</span> <span class="flow-arrow">➔</span> <span style="color: var(--danger-red);">审核不通过，驳回</span></div>
+                        <div style="text-align: center; font-size: 2vw; color: var(--text-gray);">⬇</div>
+                        <div class="flow-box danger animate-item step-4"><span>修改后再次提交</span> <span class="flow-arrow">➔</span> <span>审核通过</span> <span class="flow-arrow">➔</span> <span>数据归档</span></div>
+                    </div>
+                    <p style="text-align: center; margin-top: 5vh; color: var(--text-gray); font-size: 1.3vw;">发现问题，退回修改，确保数据准确无误。</p>
+                </div>
+            </div>
+
+            <!-- 18. HR视角：典型流程 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">💼</span> HR视角</div>
+                    <h2 style="margin-bottom: 0;">三条典型业务流程</h2>
+                </div>
+                <div class="content-box animate-item step-2">
+                    <div class="process-cards-container">
+                        <div class="process-card animate-item step-3">
+                            <h3>流程一：新员工入职</h3>
+                            <div class="process-step-list">
+                                <div class="process-step">创建入职业务</div><div class="process-step">录入人员资料</div><div class="process-step">上传合同附件</div><div class="process-step">提交审核</div><div class="process-step">归档</div>
+                            </div>
+                        </div>
+                        <div class="process-card animate-item step-4">
+                            <h3>流程二：员工调动</h3>
+                            <div class="process-step-list">
+                                <div class="process-step">发起调动</div><div class="process-step">审核组织关系</div><div class="process-step">更新履历</div><div class="process-step">归档变动材料</div>
+                            </div>
+                        </div>
+                        <div class="process-card animate-item step-5">
+                            <h3>流程三：新增培训</h3>
+                            <div class="process-step-list">
+                                <div class="process-step">创建培训信息</div><div class="process-step">维护参与人员</div><div class="process-step">记录培训情况</div><div class="process-step">形成可查询档案</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 19. 系统视角 -->
+            <div class="slide">
+                <div class="title-row animate-item step-1">
+                    <div class="top-view-badge"><span class="icon">⚙️</span> 系统视角</div>
+                    <h2 style="margin-bottom: 0;">操作留痕、清晰可查</h2>
+                </div>
+                <div class="content-box animate-item step-2">
+                    <div class="card-grid" style="margin-bottom: 4vh;">
+                        <div class="card animate-item step-3" style="background: var(--light-blue); color: var(--dark-blue); box-shadow: none;">清晰</div>
+                        <div class="card animate-item step-3" style="background: var(--light-blue); color: var(--dark-blue); box-shadow: none;">透明</div>
+                        <div class="card animate-item step-3" style="background: var(--light-blue); color: var(--dark-blue); box-shadow: none;">可追溯</div>
+                    </div>
+                    <p class="animate-item step-4" style="font-size: 1.5vw; font-weight: bold;">系统日志用于记录操作痕迹，为后续核查和问题追踪提供依据。</p>
+                    <p class="animate-item step-5" style="margin-top: 2vh; color: var(--text-gray); font-size: 1.3vw;">当出现数据疑问或需要复核时，可通过日志核查操作记录，帮助确认业务是如何办理的，而不完全依赖经办人员的记忆。</p>
+                </div>
+            </div>
+
+            <!-- 20. 业务闭环 (已完美修复) -->
+            <div class="slide">
+                <h2 class="animate-item step-1">三个视角形成业务闭环</h2>
+                <div class="triangle-wrapper animate-item step-2">
+                    <!-- 修复后的 SVG 路径，比例更协调 -->
+                    <svg class="svg-container" viewBox="0 0 600 450">
+                        <!-- 静态虚线 -->
+                        <polygon points="300,50 80,400 520,400" class="bg-polygon" />
+                        <!-- 动态流光 -->
+                        <polygon points="300,50 80,400 520,400" class="flow-polygon" />
+                    </svg>
+                    <!-- 精确绝对定位 -->
+                    <div class="tri-node node-top">系统</div>
+                    <div class="tri-node node-left">员工</div>
+                    <div class="tri-node node-right">HR</div>
+                </div>
+            </div>
+
+            <!-- 21. 总结 -->
+            <div class="slide">
+                <h2 class="animate-item step-1">总结与展望</h2>
+                <div class="content-box animate-item step-2" style="text-align: center; justify-content: center;">
+                    <div class="animate-item step-3" style="font-size: 1.5vw; color: var(--text-dark); line-height: 2.2; margin-bottom: 5vh; font-weight: 500;">
+                        对员工：持续记录从入职到职业发展的相关信息<br>
+                        对HR：通过业务流程和审核机制，规范数据形成与归档<br>
+                        对系统：通过日志和操作记录，为业务追溯提供依据
+                    </div>
+                    <h3 class="animate-item step-4" style="color: var(--primary-blue); font-size: 2.4vw; font-weight: bold; margin-bottom: 3vh; letter-spacing: 0.15vw;">
+                        让数据真正服务管理，让流程真正支撑业务
+                    </h3>
+                    <p class="animate-item step-5" style="color: var(--text-gray); font-size: 1.3vw;">我的汇报到此结束，感谢聆听！</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 右侧 逐字稿 ================= -->
+    <div class="script-area">
+        <div class="script-content" id="script-content">
+            <!-- 动态渲染 -->
+        </div>
+    </div>
+</div>
+
+<!-- 导航按钮 -->
+<div class="nav-controls">
+    <button class="nav-btn" id="prevBtn">❮</button>
+    <button class="nav-btn" id="nextBtn">❯</button>
+</div>
+<div class="page-indicator" id="pageIndicator">1 / 21</div>
+
+<script>
+    const scripts = [
+        `<p><strong>【开场】</strong>各位领导、各位同事，大家好。</p><p>今天汇报的内容是“人力资源智能化管理系统”的功能模块、典型业务流程，以及系统启用以来的建设情况。</p><p>本次汇报，我们将以一名员工的职业发展为主线，从员工、HR、系统三个视角，带大家全面了解系统。</p>`,
+        `<p><strong>【项目建设进度】</strong>首先汇报项目建设情况。</p><p>系统自 <span class="highlight">2026年5月31日</span> 启用以来，我们持续梳理并开发实现使用过程中提出的功能优化和新增需求，累计形成需求 <span class="highlight">348</span> 项。</p><p>其中，功能优化132项，Bug修复162项，新增需求60项，目前已全部完成并交付使用。</p><p>系统上线并不是建设工作的终点，而是进入真实业务场景、持续收集反馈并不断完善的开始。这些实打实的数字，是我们人力资源部和信息化公司同事们共同磨合的劳动果实。</p>`,
+        `<p><strong>【新老系统对比：老系统】</strong>大家请看屏幕。</p><p>在老系统中，三处和天诚是两个完全独立的系统。数据无法互通，业务入口分散。</p><p>这导致信息形成孤岛，业务逻辑和使用体验存在差异，给日常管理带来了很多不便。</p>`,
+        `<p><strong>【新老系统对比：新系统】</strong>再看新系统。</p><p>新系统将三处和天诚进行了<span class="highlight">统一管理</span>，实现了全员数据的集中。</p><p>功能更清晰，业务逻辑完全根据咱们人力同事的需求进行了针对性调整；UI界面也更符合现在的视觉审美，信息层级清晰，操作更加顺滑。</p>`,
+        `<p><strong>【员工管理模块】</strong>系统围绕人力资源业务，构建了五大基础业务模块。</p><p>首先是员工管理。它承载了人员档案、履历及相关资料，现在分为四个子项目：人员动态、人员管理（含基本信息、辅助性人员、富余人员、奖惩处罚等）、人事变动（含见习生定职、职称评定、调动、技能鉴定）以及合同管理（含合同预警）。</p>`,
+        `<p><strong>【薪酬管理模块】</strong>薪酬管理支撑薪酬相关业务，主要分为：工资名册、发放预警、工资发放、工资支付书、工资拖欠统计以及休假台账。</p><p>确保薪酬数据流转准确合规，切实保障员工利益。</p>`,
+        `<p><strong>【培训与证书管理】</strong>培训管理用于维护所有的培训计划以及证书资料。</p><p>包括培训计划管理、自培管理、委培管理、职工教育经费。证书管理涵盖特种作业、注册/岗位证书、特种证书审核以及退出人员台账，并内置了<span class="highlight">证书预警</span>机制，防止证件过期。</p>`,
+        `<p><strong>【文档中心】</strong>文档中心整理了所有在系统中的发文。</p><p>主要分为：文档管理、人事变动通知、发文归档。所有的业务材料在这里集中沉淀，形成企业的数字资产。</p>`,
+        `<p><strong>【系统设置】</strong>系统设置是我们灵活定制的底座。</p><p>包含流程配置、角色管理、岗位管理、用户管理以及各类预警规则配置。这些功能可以根据实际管理要求自定义审批流程和角色岗位，使业务办理方式与组织分工完美匹配。</p>`,
+        `<p><strong>【三个视角看系统】</strong>今天我不按菜单逐项介绍，而是从三个视角展开：</p><p><span class="highlight">员工视角</span>：系统的全部功能其实围绕员工展开，模拟从入职到退休，他的数据都是如何产生的。</p><p><span class="highlight">HR视角</span>：员工数据的增加过程中，HR需要做哪些工作。我们会模拟各个部门角色代入情景。</p><p><span class="highlight">系统视角</span>：看每一项业务操作如何留下记录，确保过程清晰、透明、可追溯。</p>`,
+        `<p><strong>【员工视角：入职建档】</strong>首先从员工视角来看。</p><p>一名新员工入职后，系统会逐步建立他的基础档案，内容包括：人员信息、家庭信息、学历信息、劳动合同以及档案附件等。</p><p>这些数据是员工的原始档案，它的存档意味着员工在这个大家庭生活的开始。也是后续所有业务办理的关联基础。</p>`,
+        `<p><strong>【员工视角：在岗经历】</strong>这些信息构成了员工档案的基础。随着入职手续办理、资料补充和审核归档，员工档案会逐步完整。</p><p>在岗经历包括；奖惩信息、履历信息、培训信息、证书信息、职称信息。</p><p>系统中的员工数据并不是凭空出现的，而是在具体业务发生时，由相关人员录入、提交并经过相应流程后形成。所有的经历都会留下记录，员工信息的丰富也是我们这个大家庭日益壮大的最好证明。</p>`,
+        `<p><strong>【岗位调动：文档中心联动】</strong>员工发生人事调动时，数据是如何联动的？</p><p>以“中铁隧道集团三处有限公司调动至东莞地铁2334标项目部”为例。</p><p>调动完成后，第一点：<span class="highlight">文档中心</span>会显示相关文件记录，表示公司已经正式发文。</p>`,
+        `<p><strong>【岗位调动：履历信息联动】</strong>第二点：<span class="highlight">履历信息</span>会自动更新。</p><p>系统自动记录这段工作经历，既体现了员工当前的组织归属，也保留了过去的轨迹。从员工角度看，这是职业经历的持续记录。</p>`,
+        `<p><strong>【岗位调动：干审表同步】</strong>第三点：随着履历信息不断积累，这些信息会自动汇入到<span class="highlight">干审表</span>。</p><p>里面包括了该员工所有的履历信息，集中呈现。具体汇总字段以系统配置为准。这对管理人员来说，是后续查询和核对的重要依据。</p>`,
+        `<p><strong>【HR视角：一级审核】</strong>接下来切换到人力资源同事视角。</p><p>每天登录系统后，“我的待办”会详细列出各类需要审批的数据。这些流程在系统配置里都可以自定义。</p><p>例如简单的人有信息修改流程，采用一级审核：提交数据 ➔ 审核通过 ➔ 数据归档。</p>`,
+        `<p><strong>【HR视角：多级审核】</strong>针对一些重要业务，比如特种作业审核流程，系统支持多级审核：</p><p>提交数据 ➔ 一级审核通过 ➔ 二级审核通过 ➔ 数据归档。层层把关，确保平台数据的严谨性。</p>`,
+        `<p><strong>【HR视角：驳回重审】</strong>如果数据有问题，数据会被驳回：</p><p>提交数据 ➔ 审核不通过，驳回 ➔ 修改后再次提交 ➔ 审核通过 ➔ 数据归档。</p><p>这些审批流程由我们的人力资源同事在系统管理中严格限制，确保业务合规。</p>`,
+        `<p><strong>【HR视角：三条典型流程】</strong>我们归纳了三条典型流程：</p><p>1. 新员工入职：创建业务、录资料、传附件、审核、归档。</p><p>2. 员工调动：发起调动、审核组织关系、更新履历、归档材料。</p><p>3. 新增培训：创建信息、维护人员、记录情况、形成档案。</p><p>HR的工作不仅是录入，更是确保数据准确、流程合规。</p>`,
+        `<p><strong>【系统视角：操作留痕】</strong>第三个视角是系统本身。</p><p>系统日志记录了所有的操作痕迹，业务发起、信息新增或修改、流程处理等都有记录。</p><p>例如一名员工的调动信息发生变化，除了检查最终所属单位，还可以通过系统日志核查相关操作记录，帮助确认业务是如何办理的。让操作过程清晰透明，有据可查。</p>`,
+        `<p><strong>【业务闭环】</strong>把三个视角放在一起，就能看到完整的业务闭环。</p><p>员工在入职、培训、调动等过程中产生业务数据；HR按照职责提交、审核、校验和完善数据；系统负责承载流程、沉淀档案并记录痕迹。</p><p>最终实现：数据有来源、流程有节点、变更有记录、档案可查询。</p>`,
+        `<p><strong>【总结】</strong>总体来看：</p><p>对员工来说，系统持续记录从入职到职业发展的相关信息。</p><p>对HR来说，通过业务流程和审核机制，帮助数据规范地形成和归档。</p><p>对系统来说，通过日志和操作记录，为业务追溯提供依据。</p><p>下一步，我们将继续围绕实际业务需求优化系统。我的汇报到此结束，感谢聆听！</p>`
+    ];
+
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const indicator = document.getElementById('pageIndicator');
+    const scriptContent = document.getElementById('script-content');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    function showSlide(index) {
+        slides.forEach((slide, i) => {
+            if (i === index) {
+                slide.classList.add('active');
+                void slide.offsetWidth; 
+            } else {
+                slide.classList.remove('active');
+            }
+        });
+
+        if(scripts[index]) {
+            scriptContent.innerHTML = scripts[index];
+            document.querySelector('.script-area').scrollTop = 0;
+        }
+
+        indicator.innerText = `${index + 1} / ${totalSlides}`;
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === totalSlides - 1;
+    }
+
+    function nextSlide() { if (currentSlide < totalSlides - 1) { currentSlide++; showSlide(currentSlide); } }
+    function prevSlide() { if (currentSlide > 0) { currentSlide--; showSlide(currentSlide); } }
+
+    prevBtn.addEventListener('click', prevSlide);
+    nextBtn.addEventListener('click', nextSlide);
+
+    // 1. 键盘控制
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { nextSlide(); }
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { prevSlide(); }
+    });
+
+    // 2. 鼠标滚轮控制
+    let isScrolling = false;
+    document.getElementById('ppt-area').addEventListener('wheel', (e) => {
+        if (isScrolling) return;
+        isScrolling = true;
+        
+        if (e.deltaY > 0) {
+            nextSlide();
+        } else if (e.deltaY < 0) {
+            prevSlide();
+        }
+        
+        setTimeout(() => { isScrolling = false; }, 500);
+    }, { passive: true });
+
+    // 3. 点击翻页
+    document.getElementById('ppt-area').addEventListener('click', (e) => {
+        const width = window.innerWidth;
+        const clickX = e.clientX;
+        const pptWidth = width * 0.75;
+
+        if (clickX < pptWidth * 0.35) {
+            prevSlide();
+        } else {
+            nextSlide();
+        }
+    });
+
+    // 初始化
+    showSlide(0);
+</script>
+</body>
+</html>
